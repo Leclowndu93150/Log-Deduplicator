@@ -2,61 +2,12 @@ package com.leclowndu93150.log_deduplicator.core;
 
 import com.leclowndu93150.log_deduplicator.Config;
 
-import java.util.regex.Pattern;
-
 public class SpamPatternDetector {
-    private static final Pattern COORDINATES_PATTERN = Pattern.compile("(?<![\\w.])-?\\d+\\.\\d+,\\s*-?\\d+\\.\\d+(?:,\\s*-?\\d+\\.\\d+)?(?![\\w.])");
-    private static final Pattern UUID_PATTERN = Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern MEMORY_ADDRESS_PATTERN = Pattern.compile("@[0-9a-fA-F]{6,16}");
-    private static final Pattern MILLISECOND_PATTERN = Pattern.compile("\\d+ms");
-    private static final Pattern TICK_PATTERN = Pattern.compile("\\d+ tick");
-    
-    private static final Pattern CHUNK_COORDS = Pattern.compile("\\[(-?\\d+),\\s*(-?\\d+)\\]");
-    private static final Pattern ENTITY_COORDS = Pattern.compile("\\((-?\\d+\\.\\d+),\\s*(-?\\d+\\.\\d+),\\s*(-?\\d+\\.\\d+)\\)");
 
     public static String normalizeMessage(String message) {
-        if (message == null) {
-            return "";
-        }
-        if (message.isEmpty()) {
-            return message;
-        }
-
-        boolean hasDigit = false;
-        boolean hasAt = false;
-        boolean hasDash = false;
-        for (int i = 0, len = message.length(); i < len; i++) {
-            char c = message.charAt(i);
-            if (c >= '0' && c <= '9') hasDigit = true;
-            else if (c == '@') hasAt = true;
-            else if (c == '-') hasDash = true;
-            if (hasDigit && hasAt && hasDash) break;
-        }
-
-        if (!hasDigit && !hasAt) return message;
-
-        String normalized = message;
-
-        if (Config.normalizeCoordinates && hasDigit) {
-            normalized = CHUNK_COORDS.matcher(normalized).replaceAll("[*, *]");
-            normalized = ENTITY_COORDS.matcher(normalized).replaceAll("(*, *, *)");
-            normalized = COORDINATES_PATTERN.matcher(normalized).replaceAll("*");
-        }
-
-        if (Config.normalizeUUIDs && hasDigit && hasDash) {
-            normalized = UUID_PATTERN.matcher(normalized).replaceAll("*UUID*");
-        }
-
-        if (Config.normalizeMemoryAddresses && hasAt) {
-            normalized = MEMORY_ADDRESS_PATTERN.matcher(normalized).replaceAll("@*");
-        }
-
-        if (Config.normalizeTimings && hasDigit) {
-            normalized = MILLISECOND_PATTERN.matcher(normalized).replaceAll("*ms");
-            normalized = TICK_PATTERN.matcher(normalized).replaceAll("* tick");
-        }
-
-        return normalized;
+        if (message == null) return "";
+        if (message.isEmpty()) return message;
+        return FastMessageScanner.normalize(message);
     }
 
     public static int estimateSpamWindowMs(String message) {
@@ -64,21 +15,35 @@ public class SpamPatternDetector {
             return Config.generalWindowMs;
         }
 
-        String lower = message.toLowerCase();
-
-        if (lower.contains("chunk") || lower.contains("loading") || lower.contains("unloading")) {
+        if (containsIgnoreCase(message, "chunk") || containsIgnoreCase(message, "loading") || containsIgnoreCase(message, "unloading")) {
             return Config.chunkWindowMs;
         }
 
-        if (lower.contains("entity") || lower.contains("tick") || lower.contains("particle")) {
+        if (containsIgnoreCase(message, "entity") || containsIgnoreCase(message, "tick") || containsIgnoreCase(message, "particle")) {
             return Config.coordinatesWindowMs;
         }
 
-        if (lower.contains("save") || lower.contains("autosave") || lower.contains("world")) {
+        if (containsIgnoreCase(message, "save") || containsIgnoreCase(message, "autosave") || containsIgnoreCase(message, "world")) {
             return Config.generalWindowMs * 2;
         }
 
         return Config.generalWindowMs;
+    }
+
+    private static boolean containsIgnoreCase(String haystack, String needle) {
+        int hLen = haystack.length();
+        int nLen = needle.length();
+        if (nLen > hLen) return false;
+        outer:
+        for (int i = 0, limit = hLen - nLen; i <= limit; i++) {
+            for (int j = 0; j < nLen; j++) {
+                char hc = haystack.charAt(i + j);
+                char nc = needle.charAt(j);
+                if (hc != nc && Character.toLowerCase(hc) != nc) continue outer;
+            }
+            return true;
+        }
+        return false;
     }
 
     public static boolean isStackTraceLine(String message) {
