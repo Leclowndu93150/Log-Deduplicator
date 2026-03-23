@@ -57,17 +57,34 @@ public class SmartPrintStream extends PrintStream {
     public void write(byte[] buf, int off, int len) {
         lock.lock();
         try {
-            for (int i = off; i < off + len; i++) {
-                byte b = buf[i];
-                if (b == '\n') {
+            int end = off + len;
+            int segStart = off;
+            for (int i = off; i < end; i++) {
+                if (buf[i] == '\n') {
+                    if (i > segStart) {
+                        appendSegment(buf, segStart, i);
+                    }
                     processLine(lineBuffer.toString());
                     lineBuffer.setLength(0);
-                } else if (b != '\r') {
-                    lineBuffer.append((char) b);
+                    segStart = i + 1;
+                } else if (buf[i] == '\r') {
+                    if (i > segStart) {
+                        appendSegment(buf, segStart, i);
+                    }
+                    segStart = i + 1;
                 }
+            }
+            if (segStart < end) {
+                appendSegment(buf, segStart, end);
             }
         } finally {
             lock.unlock();
+        }
+    }
+
+    private void appendSegment(byte[] buf, int from, int to) {
+        for (int i = from; i < to; i++) {
+            lineBuffer.append((char) buf[i]);
         }
     }
 

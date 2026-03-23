@@ -22,23 +22,36 @@ public class SpamPatternDetector {
             return message;
         }
 
+        boolean hasDigit = false;
+        boolean hasAt = false;
+        boolean hasDash = false;
+        for (int i = 0, len = message.length(); i < len; i++) {
+            char c = message.charAt(i);
+            if (c >= '0' && c <= '9') hasDigit = true;
+            else if (c == '@') hasAt = true;
+            else if (c == '-') hasDash = true;
+            if (hasDigit && hasAt && hasDash) break;
+        }
+
+        if (!hasDigit && !hasAt) return message;
+
         String normalized = message;
 
-        if (Config.normalizeCoordinates) {
+        if (Config.normalizeCoordinates && hasDigit) {
             normalized = CHUNK_COORDS.matcher(normalized).replaceAll("[*, *]");
             normalized = ENTITY_COORDS.matcher(normalized).replaceAll("(*, *, *)");
             normalized = COORDINATES_PATTERN.matcher(normalized).replaceAll("*");
         }
 
-        if (Config.normalizeUUIDs) {
+        if (Config.normalizeUUIDs && hasDigit && hasDash) {
             normalized = UUID_PATTERN.matcher(normalized).replaceAll("*UUID*");
         }
 
-        if (Config.normalizeMemoryAddresses) {
+        if (Config.normalizeMemoryAddresses && hasAt) {
             normalized = MEMORY_ADDRESS_PATTERN.matcher(normalized).replaceAll("@*");
         }
 
-        if (Config.normalizeTimings) {
+        if (Config.normalizeTimings && hasDigit) {
             normalized = MILLISECOND_PATTERN.matcher(normalized).replaceAll("*ms");
             normalized = TICK_PATTERN.matcher(normalized).replaceAll("* tick");
         }
