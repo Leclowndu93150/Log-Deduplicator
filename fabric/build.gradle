@@ -63,16 +63,14 @@ publishMods {
     modLoaders.add("fabric")
 
     curseforge {
-        accessToken = providers.environmentVariable("CURSEFORGE_TOKEN")
-            .orElse(provider { rootProject.ext.curseforgeToken })
+        accessToken = rootProject.ext.curseforgeToken
         projectId = "1493534"
         minecraftVersions.add("${minecraft_version}")
         javaVersions.add(JavaVersion.VERSION_21)
     }
 
     // modrinth {
-    //     accessToken = providers.environmentVariable("MODRINTH_TOKEN")
-    //         .orElse(provider { rootProject.ext.modrinthToken })
+    //     accessToken = rootProject.ext.modrinthToken
     //     projectId = "MODRINTH_PROJECT_ID"
     //     minecraftVersions.add("${minecraft_version}")
     // }

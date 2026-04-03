@@ -1,5 +1,6 @@
 package com.leclowndu93150.log_deduplicator;
 
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -7,7 +8,6 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
-import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
@@ -24,7 +24,14 @@ public class LogDeduplicatorNeoForge {
         modEventBus.addListener(this::commonSetup);
         NeoForge.EVENT_BUS.register(this);
 
-        modContainer.registerExtensionPoint(IConfigScreenFactory.class,
+        if (FMLLoader.getDist() == Dist.CLIENT) {
+            registerConfigScreen(modContainer);
+        }
+    }
+
+    private static void registerConfigScreen(ModContainer modContainer) {
+        modContainer.registerExtensionPoint(
+            net.neoforged.neoforge.client.gui.IConfigScreenFactory.class,
             (container, parent) -> ConfigScreen.create(parent));
     }
 
